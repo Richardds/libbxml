@@ -2,6 +2,12 @@
 
 Tiny BinaryXML parser library
 
+## Usage
+
+`bxml <filename>` where `<filename>` is file path to _BinaryXML_ `.bxml` file
+
+Regular XML file is printed to STDOUT.
+
 ## Build
 
 `make` - compile all
