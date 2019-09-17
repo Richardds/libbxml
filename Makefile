@@ -6,11 +6,11 @@
 # 
 #
 
-CC = g++
+CC = gcc
 AR = ar
 RM = rm
 MKDIR = mkdir
-CFLAGS = -Wall -pedantic
+CFLAGS = -Wall -Wextra -pedantic -std=c11 -O2
 
 all: compile-static-lib compile-dynamic-lib compile-cli
 

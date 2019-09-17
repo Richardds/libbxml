@@ -13,8 +13,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <stdint.h>
 
-#define FOURCC(a,b,c,d) ((unsigned int)(((a)<<24) | ((b)<<16) | ((c)<<8) | (d)))
+#define FOURCC(a,b,c,d) ((uint32_t)(((a)<<24) | ((b)<<16) | ((c)<<8) | (d)))
+
+#define BinaryXMLHeaderMagic FOURCC('B', 'X', 'M', 'L')
+#define BinaryXMLInvalidIndex INT_MAX
 
 enum BinaryXMLStatus {
     NO_ERROR,
@@ -25,26 +29,26 @@ enum BinaryXMLStatus {
 
 struct BinaryXMLFileHeader
 {
-    unsigned int magic;
-    int attributesCount;
-    int nodesCount;
-    int stringsCount;
+    uint32_t magic;
+    int32_t attributesCount;
+    int32_t nodesCount;
+    int32_t stringsCount;
 } __attribute__ ((packed));
 
 struct BinaryXMLFileAttribute
 {
-    int nameIndex;
-    int valueIndex;
+    int32_t nameIndex;
+    int32_t valueIndex;
 } __attribute__ ((packed));
 
 struct BinaryXMLFileNode
 {
-    int nameIndex;
-    int firstChildIndex;
-    int nextSiblingIndex;
-    int parentIndex;
-    int attributeIndex;
-    int attributesCount;
+    int32_t nameIndex;
+    int32_t firstChildIndex;
+    int32_t nextSiblingIndex;
+    int32_t parentIndex;
+    int32_t attributeIndex;
+    int32_t attributesCount;
 } __attribute__ ((packed));
 
 struct BinaryXML
@@ -56,14 +60,12 @@ struct BinaryXML
     char ** stringsTable;
 };
 
-const int InvalidIndex = INT_MAX;
-
 enum BinaryXMLStatus readBinaryXML(FILE * fileHandle, size_t fileSize, struct BinaryXML * binaryXML);
 
 void freeBinaryXML(struct BinaryXML * binaryXML);
 
-void printBinaryXMLNode(struct BinaryXML * binaryXML, struct BinaryXMLFileNode * node, unsigned short depth);
+void printBinaryXMLNode(struct BinaryXML * binaryXML, struct BinaryXMLFileNode * node, int_fast8_t depth);
 
-void printBinaryXMLDepth(unsigned short depth);
+void printBinaryXMLDepth(int_fast8_t depth);
 
 #endif

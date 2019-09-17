@@ -6,20 +6,23 @@
  * 
  */
 
+#include <assert.h>
 #include "bxml.h"
 
 enum BinaryXMLStatus readBinaryXML(FILE * fileHandle, size_t fileSize, struct BinaryXML * binaryXML)
 {
-    // Read file header
-    fread(&binaryXML->header, sizeof(struct BinaryXMLFileHeader), 1, fileHandle);
-
-    if (binaryXML->header.magic != FOURCC('B', 'X', 'M', 'L')) {
-        return INVALID_FILE_HEADER_MAGIC;
-    }
-
+    size_t headerSize = sizeof(struct BinaryXMLFileHeader);
     size_t attributesSize = sizeof(struct BinaryXMLFileAttribute) * binaryXML->header.attributesCount;
     size_t nodesSize = sizeof(struct BinaryXMLFileNode) * binaryXML->header.nodesCount;
     size_t minimalFileSize = sizeof(struct BinaryXMLFileHeader) + attributesSize + nodesSize + binaryXML->header.stringsCount;
+
+    // Read file header
+    size_t headerSizeRead = fread(&binaryXML->header, sizeof(struct BinaryXMLFileHeader), 1, fileHandle);
+    assert(headerSizeRead == headerSize);
+
+    if (binaryXML->header.magic != BinaryXMLHeaderMagic) {
+        return INVALID_FILE_HEADER_MAGIC;
+    }
 
     if (fileSize < minimalFileSize) {
         return FILE_CORRUPTED;
@@ -30,14 +33,16 @@ enum BinaryXMLStatus readBinaryXML(FILE * fileHandle, size_t fileSize, struct Bi
     if (binaryXML->attributes == NULL) {
         return MEMORY_ALLOCATION_FAILED;
     }
-    fread(binaryXML->attributes, sizeof(struct BinaryXMLFileAttribute), binaryXML->header.attributesCount, fileHandle);
+    size_t attributesSizeRead = fread(binaryXML->attributes, sizeof(struct BinaryXMLFileAttribute), binaryXML->header.attributesCount, fileHandle);
+    assert(attributesSizeRead == attributesSize);
 
     // Read nodes
     binaryXML->nodes = (struct BinaryXMLFileNode *)malloc(sizeof(struct BinaryXMLFileNode) * binaryXML->header.nodesCount);
     if (binaryXML->nodes == NULL) {
         return MEMORY_ALLOCATION_FAILED;
     }
-    fread(binaryXML->nodes, sizeof(struct BinaryXMLFileNode), binaryXML->header.nodesCount, fileHandle);
+    size_t nodesSizeRead = fread(binaryXML->nodes, sizeof(struct BinaryXMLFileNode), binaryXML->header.nodesCount, fileHandle);
+    assert(nodesSizeRead == nodesSize);
 
     // Read strings buffer
     size_t stringsBufferSize = fileSize - ftell(fileHandle);
@@ -45,15 +50,16 @@ enum BinaryXMLStatus readBinaryXML(FILE * fileHandle, size_t fileSize, struct Bi
     if (binaryXML->stringsBuffer == NULL) {
         return MEMORY_ALLOCATION_FAILED;
     }
-    fread(binaryXML->stringsBuffer, stringsBufferSize, 1, fileHandle);
+    size_t stringsBufferSizeRead = fread(binaryXML->stringsBuffer, stringsBufferSize, 1, fileHandle);
+    assert(stringsBufferSizeRead == stringsBufferSize);
 
     // Map strings to table
     binaryXML->stringsTable = (char **)malloc(sizeof(char *) * binaryXML->header.stringsCount);
     if (binaryXML->stringsTable == NULL) {
         return MEMORY_ALLOCATION_FAILED;
     }
-    char * stringPtr = binaryXML->stringsBuffer;
-    for (int index = 0; index < binaryXML->header.stringsCount; index++) {
+    char * stringPtr = (char *)binaryXML->stringsBuffer;
+    for (int32_t index = 0; index < binaryXML->header.stringsCount; index++) {
         binaryXML->stringsTable[index] = stringPtr;
         stringPtr += strlen((const char *)stringPtr) + 1;
     }
@@ -76,7 +82,7 @@ void freeBinaryXML(struct BinaryXML * binaryXML)
     binaryXML->stringsTable = NULL;
 }
 
-void printBinaryXMLNode(struct BinaryXML * binaryXML, struct BinaryXMLFileNode * node, unsigned short depth)
+void printBinaryXMLNode(struct BinaryXML * binaryXML, struct BinaryXMLFileNode * node, int_fast8_t depth)
 {
     char * name = binaryXML->stringsTable[node->nameIndex];
 
@@ -85,7 +91,7 @@ void printBinaryXMLNode(struct BinaryXML * binaryXML, struct BinaryXMLFileNode *
     printf("<%s", name);
 
     if (node->attributesCount > 0) {
-        for (int index = node->attributeIndex; index < node->attributeIndex + node->attributesCount; index++) {
+        for (int32_t index = node->attributeIndex; index < node->attributeIndex + node->attributesCount; index++) {
             struct BinaryXMLFileAttribute * attribute = &binaryXML->attributes[index];
             printf(" %s=\"%s\"", binaryXML->stringsTable[attribute->nameIndex], binaryXML->stringsTable[attribute->valueIndex]);
         }
@@ -93,7 +99,7 @@ void printBinaryXMLNode(struct BinaryXML * binaryXML, struct BinaryXMLFileNode *
 
     putchar('>');
 
-    if (node->firstChildIndex != InvalidIndex) {
+    if (node->firstChildIndex != BinaryXMLInvalidIndex) {
         putchar('\n');
         printBinaryXMLNode(binaryXML, &binaryXML->nodes[node->firstChildIndex], depth + 1);
         printBinaryXMLDepth(depth);
@@ -101,12 +107,12 @@ void printBinaryXMLNode(struct BinaryXML * binaryXML, struct BinaryXMLFileNode *
 
     printf("</%s>\n", name);
 
-    if (node->nextSiblingIndex != InvalidIndex) {
+    if (node->nextSiblingIndex != BinaryXMLInvalidIndex) {
         printBinaryXMLNode(binaryXML, &binaryXML->nodes[node->nextSiblingIndex], depth);
     }
 }
 
-void printBinaryXMLDepth(unsigned short depth)
+void printBinaryXMLDepth(int_fast8_t depth)
 {
     if (depth > 0) {
         putchar('\t');
