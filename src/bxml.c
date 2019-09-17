@@ -11,18 +11,19 @@
 
 enum BinaryXMLStatus readBinaryXML(FILE * fileHandle, size_t fileSize, struct BinaryXML * binaryXML)
 {
-    size_t headerSize = sizeof(struct BinaryXMLFileHeader);
-    size_t attributesSize = sizeof(struct BinaryXMLFileAttribute) * binaryXML->header.attributesCount;
-    size_t nodesSize = sizeof(struct BinaryXMLFileNode) * binaryXML->header.nodesCount;
-    size_t minimalFileSize = sizeof(struct BinaryXMLFileHeader) + attributesSize + nodesSize + binaryXML->header.stringsCount;
-
     // Read file header
-    size_t headerSizeRead = fread(&binaryXML->header, sizeof(struct BinaryXMLFileHeader), 1, fileHandle);
-    assert(headerSizeRead == headerSize);
+    size_t headerRead = fread(&binaryXML->header, sizeof(struct BinaryXMLFileHeader), 1, fileHandle);
+    assert(headerRead == 1);
 
     if (binaryXML->header.magic != BinaryXMLHeaderMagic) {
         return INVALID_FILE_HEADER_MAGIC;
     }
+
+    // Validate expected file size
+    size_t minimalFileSize = sizeof(struct BinaryXMLFileHeader)
+                           + sizeof(struct BinaryXMLFileAttribute) * binaryXML->header.attributesCount
+                           + sizeof(struct BinaryXMLFileNode) * binaryXML->header.nodesCount
+                           + binaryXML->header.stringsCount;
 
     if (fileSize < minimalFileSize) {
         return FILE_CORRUPTED;
@@ -33,16 +34,16 @@ enum BinaryXMLStatus readBinaryXML(FILE * fileHandle, size_t fileSize, struct Bi
     if (binaryXML->attributes == NULL) {
         return MEMORY_ALLOCATION_FAILED;
     }
-    size_t attributesSizeRead = fread(binaryXML->attributes, sizeof(struct BinaryXMLFileAttribute), binaryXML->header.attributesCount, fileHandle);
-    assert(attributesSizeRead == attributesSize);
+    int32_t attributesRead = fread(binaryXML->attributes, sizeof(struct BinaryXMLFileAttribute), binaryXML->header.attributesCount, fileHandle);
+    assert(attributesRead == binaryXML->header.attributesCount);
 
     // Read nodes
     binaryXML->nodes = (struct BinaryXMLFileNode *)malloc(sizeof(struct BinaryXMLFileNode) * binaryXML->header.nodesCount);
     if (binaryXML->nodes == NULL) {
         return MEMORY_ALLOCATION_FAILED;
     }
-    size_t nodesSizeRead = fread(binaryXML->nodes, sizeof(struct BinaryXMLFileNode), binaryXML->header.nodesCount, fileHandle);
-    assert(nodesSizeRead == nodesSize);
+    int32_t nodesRead = fread(binaryXML->nodes, sizeof(struct BinaryXMLFileNode), binaryXML->header.nodesCount, fileHandle);
+    assert(nodesRead == binaryXML->header.nodesCount);
 
     // Read strings buffer
     size_t stringsBufferSize = fileSize - ftell(fileHandle);
@@ -50,8 +51,8 @@ enum BinaryXMLStatus readBinaryXML(FILE * fileHandle, size_t fileSize, struct Bi
     if (binaryXML->stringsBuffer == NULL) {
         return MEMORY_ALLOCATION_FAILED;
     }
-    size_t stringsBufferSizeRead = fread(binaryXML->stringsBuffer, stringsBufferSize, 1, fileHandle);
-    assert(stringsBufferSizeRead == stringsBufferSize);
+    size_t stringsBufferRead = fread(binaryXML->stringsBuffer, stringsBufferSize, 1, fileHandle);
+    assert(stringsBufferRead == 1);
 
     // Map strings to table
     binaryXML->stringsTable = (char **)malloc(sizeof(char *) * binaryXML->header.stringsCount);
