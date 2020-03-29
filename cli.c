@@ -1,7 +1,7 @@
 /**
  * Tiny BinaryXML parser library usage example
  * 
- * Richard Boldiš <richard.boldis@protonmail.com>
+ * Richard Boldiš <richard@boldis.dev>
  * https://github.com/Richardds
  * 
  */
